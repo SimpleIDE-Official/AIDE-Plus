@@ -55,6 +55,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
+import com.aide.ui.services.FileBrowserService;
 
 public class ZeroAicyMainActivity extends MainActivity {
 
@@ -572,7 +573,8 @@ public class ZeroAicyMainActivity extends MainActivity {
 						launchIntentForPackage = getPackageManager().getLaunchIntentForPackage("com.aide.termux");
 
 					}
-
+					
+					
 					if (launchIntentForPackage == null) {
 						com.aide.common.MessageBox.BT(ServiceContainer.getMainActivity(), "运行错误",
 								"AIDE-Termux未安装或找不到主Activity");
@@ -580,21 +582,55 @@ public class ZeroAicyMainActivity extends MainActivity {
 					}
 
 					String currentAppHome = ZeroAicySetting.getCurrentAppHome();
+					
 					if (currentAppHome == null) {
-						com.aide.common.MessageBox.BT(ServiceContainer.getMainActivity(), "没有打开Gradle项目",
-								"请保证项目目录下GradleWrapper(Gradle包装器)");
-						return true;
-					}
-					File gradleProjectRootDir = new File(currentAppHome).getParentFile();
-					launchIntentForPackage.putExtra(work_dir_extra, gradleProjectRootDir.getAbsolutePath());
-					if (cmdline.contains("gradle")) {
-						if (!hasGradlew(currentAppHome)) {
-							com.aide.common.MessageBox.BT(ServiceContainer.getMainActivity(), "不是Gradle项目",
-									"请保证项目目录下GradleWrapper(Gradle包装器)");
-							return true;
+						
+						{
+							FileBrowserService fileBrowserService = ServiceContainer.getFileBrowserService();
+							// CurrentDir
+							String currentFilePath = fileBrowserService.j6();
+							if (currentFilePath == null) {
+								return false;
+							}
+
+							//当前文件夹
+							File currentFile = new File(currentFilePath);
+
+							//确保打开的是文件夹
+							if (!currentFile.isDirectory()) {
+								//不是文件夹，查看父目录是不是文件夹
+								File currentFileParentFile = currentFile.getParentFile();
+								if (currentFileParentFile.isDirectory()) {
+									currentFile = currentFileParentFile;
+								} else {
+									return true;
+								}
+							}
+							// 设置工作目录
+							launchIntentForPackage.putExtra(work_dir_extra, currentFile.getAbsolutePath());
 						}
+//						com.aide.common.MessageBox.BT(ServiceContainer.getMainActivity(), "没有打开Gradle项目",
+//								"请保证项目目录下GradleWrapper(Gradle包装器)");
+						
+					}else{
+						
+						File gradleProjectRootDir = new File(currentAppHome).getParentFile();
+						
+						// 设置工作目录
+						launchIntentForPackage.putExtra(work_dir_extra, gradleProjectRootDir.getAbsolutePath());
+						
+						if (cmdline.contains("gradle")) {
+							if (!hasGradlew(currentAppHome)) {
+								com.aide.common.MessageBox.BT(ServiceContainer.getMainActivity(), "不是Gradle项目",
+															  "请保证项目目录下GradleWrapper(Gradle包装器)");
+								return true;
+							}
+						}
+						
+						// gradle 命令
 						launchIntentForPackage.putExtra(gradle_cmd_line_extra, cmdline);
 					}
+
 					startActivity(launchIntentForPackage);
 
 					return true;
